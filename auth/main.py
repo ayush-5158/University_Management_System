@@ -8,9 +8,11 @@ from jose import jwt,JWTError
 from datetime import datetime,timedelta,UTC
 from fastapi.security import OAuth2PasswordRequestForm,OAuth2PasswordBearer
 
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
-
-SECRET_KEY = "ZWSIOpssxK0AVco5GVXwfV2F59tEaNW_pt-cxF0rEN0"
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -54,7 +56,6 @@ def register_user(user:schemas.UserCreate, db : Session= Depends(get_db)):
         "id":new_user.id,
         "user_name":new_user.username,
         "email":new_user.email,
-        "hashed_password":new_user.hashed_password,
         "role":new_user.role
     }
 
@@ -66,7 +67,7 @@ def login(form_data:OAuth2PasswordRequestForm=Depends(),db:Session=Depends(get_d
     ).first()
 
     if not user:
-        raise HTTPException(status_code=404,detail="User Not Exist.")
+        raise HTTPException(status_code=401,detail="User Not Exist.")
     
     if not utils.verify_password(form_data.password,user.hashed_password) :
         raise HTTPException(status_code=401,detail="Invalid Password.")
@@ -82,7 +83,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 def get_current_user(token:str = Depends(oauth2_scheme)):
     credential_exception = HTTPException(status_code=401,detail="Couldn't validate credential.",headers={"WWW-Authenticate":"Bearer"})
     try:
-        payload = jwt.decode(token,SECRET_KEY,algorithms=ALGORITHM)
+        payload = jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
         username : str = payload.get("sub")
         role : str = payload.get("role")
         if username is None or role is None:
@@ -99,7 +100,7 @@ def get_current_user(token:str = Depends(oauth2_scheme)):
 @app.get("/protected")
 def protected_route(current_user:dict = Depends(get_current_user)):
     return {
-        "message": f"hello {current_user["username"]} | You are trying to access a protected route."
+        "message": f"hello {current_user['username']} | You are trying to access a protected route."
     }
 allowed_roles =['user','admin']
 def require_roles(allowed_roles:list[str]):

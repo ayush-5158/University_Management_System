@@ -117,3 +117,10 @@ def profile(current_user:dict=Depends(require_roles(allowed_roles))):
     return{
         "message": f"The current user is {current_user}"
     }
+
+
+@app.get("/admin")
+def admin_profile(current_user:dict = Depends(require_roles(['admin']))):
+    return {
+        "message":f"The current user is {current_user['username']} and role is {current_user['role']}"
+    }
